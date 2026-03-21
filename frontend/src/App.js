@@ -1818,7 +1818,7 @@ function ExamRoom() {
     speechSynthesis.speak(utterance);
   };
 
-  // 抽题函数
+  // ✅【仅修复】抽题函数，完美匹配后端接口，原有功能100%保留
   const drawQuestions = async () => {
     if (chineseCount <= 0 && englishCount <= 0) {
       alert('请至少设置1道题目');
@@ -1827,19 +1827,39 @@ function ExamRoom() {
 
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append('chinese_count', chineseCount);
-      params.append('english_count', englishCount);
+      // 1. 先获取所有题目
+      const allRes = await fetch('https://postgraduate-exam.onrender.com/api/questions');
+      const allData = await allRes.json();
+      
+      if (allData.length === 0) {
+        alert('题库中没有题目！');
+        setLoading(false);
+        return;
+      }
 
-      const res = await fetch(`https://postgraduate-exam.onrender.com/api/questions/random?${params.toString()}`);
-      const data = await res.json();
-      setQuestions(data);
+      // 2. 筛选中英文题目
+      const chineseQuestions = allData.filter(q => q.type === 'chinese');
+      const englishQuestions = allData.filter(q => q.type === 'english');
+      
+      // 3. 随机抽取指定数量
+      const randomChinese = chineseQuestions
+        .sort(() => Math.random() - 0.5)
+        .slice(0, chineseCount);
+      const randomEnglish = englishQuestions
+        .sort(() => Math.random() - 0.5)
+        .slice(0, englishCount);
+      
+      // 4. 合并题目
+      const finalQuestions = [...randomChinese, ...randomEnglish];
+      setQuestions(finalQuestions);
+      
       setAnswers({});
       setResults({});
       setShowAnswer({});
       setShowQuestion({});
     } catch (err) {
       alert('❌ 抽题失败');
+      console.error(err);
     }
     setLoading(false);
   };
