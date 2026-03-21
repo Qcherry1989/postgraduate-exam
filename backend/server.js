@@ -88,6 +88,7 @@ app.delete('/api/questions/:id', async (req, res) => {
 });
 
 // 启动服务
-app.listen(port, () => {
-  console.log(`🚀 云端后端服务运行在端口 ${port}`);
+// ⚠️ 关键修改：明确告诉 Render 绑定到 0.0.0.0
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🚀 云端后端服务运行在端口 ${port}，主机 0.0.0.0`);
 });
