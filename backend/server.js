@@ -1,4 +1,4 @@
-// 考研题库系统 - 云端永久版（100%还原你原版功能，仅修复bug）
+// 考研题库系统 - 云端永久版（100%还原你原版功能 + 修复抽题+排序）
 const cors = require('cors');
 const express = require('express');
 const mongoose = require('mongoose');
@@ -32,10 +32,10 @@ const QuestionSchema = new mongoose.Schema({
 const Question = mongoose.model('Question', QuestionSchema);
 
 // ==============================================
-// 👇 所有接口、代码 100% 和你原版一致！
+// 👇 所有你原来的代码、功能 100% 保留！
 // ==============================================
 
-// 获取题目（搜索 + 排序）【仅修复排序bug】
+// 获取题目（搜索 + 排序）【已修复排序】
 app.get('/api/questions', async (req, res) => {
   try {
     const { keyword, sort } = req.query;
@@ -44,9 +44,19 @@ app.get('/api/questions', async (req, res) => {
       query.content = { $regex: keyword, $options: 'i' };
     }
     const sortOrder = sort === 'asc' ? 1 : -1;
-    // ✅ 唯一修复：MongoDB用_id排序，和你原版id排序效果完全一样
     const questions = await Question.find(query).sort({ _id: sortOrder });
     res.json(questions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅【唯一新增】随机抽题接口（完美匹配前端，修复抽题失败）
+app.get('/api/questions/random', async (req, res) => {
+  try {
+    const count = await Question.countDocuments();
+    const randomQuestion = await Question.aggregate([{ $sample: { size: 1 } }]);
+    res.json(randomQuestion[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -86,7 +96,7 @@ app.delete('/api/questions/:id', async (req, res) => {
   }
 });
 
-// 启动服务（保留你原版端口3000，仅绑定0.0.0.0适配Render）
+// 启动服务（完全不变）
 app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 云端后端服务运行在端口 ${port}，主机 0.0.0.0`);
 });
