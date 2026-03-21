@@ -1,18 +1,170 @@
-.App {
-  text-align: center;
+/* 全局移动端适配基础样式（解决文字拥挤、字号过大） */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
+/* 移动端根字体适配：以375px手机屏为基准，1rem=10px */
+html {
+  font-size: calc(100vw / 37.5);
+  min-font-size: 12px; /* 防止过小 */
+  max-font-size: 16px; /* 防止过大 */
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-width: 100vw;
+  overflow-x: hidden; /* 防止横向滚动 */
+}
+
+/* App 全局容器 */
+.App {
+  text-align: center;
+  max-width: 100%;
+  padding: 1rem; /* 移动端自适应内边距 */
+}
+
+/* 电脑端适配（屏幕≥768px时恢复正常字号） */
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+  .App {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+/* 模拟复试考场核心样式（响应式） */
+.exam-room-container {
+  max-width: 100%;
+  padding: 2rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 标题样式（解决移动端标题拥挤、字号大） */
+.exam-title {
+  font-size: 3.6rem; /* 移动端≈36px，电脑端自动适配 */
+  font-weight: bold;
+  margin-bottom: 2rem;
+  text-align: center;
+  line-height: 1.2; /* 优化行高，避免文字重叠 */
+  word-wrap: break-word; /* 强制换行，避免一行显示太少 */
+}
+
+/* 说明文字样式 */
+.exam-desc {
+  font-size: 1.6rem;
+  color: #666;
+  text-align: center;
+  margin-bottom: 3rem;
+  line-height: 1.5;
+}
+
+/* 题数设置区域 */
+.question-count-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem; /* 增加间距，避免拥挤 */
+  margin-bottom: 3rem;
+}
+
+.question-count-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.question-count-label {
+  font-size: 1.8rem;
+}
+
+.question-count-input {
+  width: 8rem; /* 移动端自适应宽度 */
+  height: 4rem;
+  font-size: 1.8rem;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+}
+
+/* 抽题按钮 */
+.draw-btn {
+  width: 100%;
+  height: 5rem;
+  font-size: 2rem;
+  background-color: #000;
+  color: #fff;
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* 朗读按钮（移动端兼容） */
+.read-btn {
+  width: 100%;
+  height: 5rem;
+  font-size: 1.8rem;
+  background-color: #4CAF50;
+  color: #fff;
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* 保留你原有动画样式（如果需要） */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(-20px) scale(0.96);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 原有默认样式（可保留，不影响） */
 .App-logo {
   height: 40vmin;
   pointer-events: none;
 }
-
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
     animation: App-logo-spin infinite 20s linear;
   }
 }
-
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -23,16 +175,10 @@
   font-size: calc(10px + 2vmin);
   color: white;
 }
-
 .App-link {
   color: #61dafb;
 }
-
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

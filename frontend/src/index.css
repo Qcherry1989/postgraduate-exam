@@ -11,3 +11,31 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* 全局移动端适配基础样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 移动端根字体适配：以375px手机屏为基准，1rem=10px */
+html {
+  font-size: calc(100vw / 37.5);
+  /* 防止字体过大/过小 */
+  min-font-size: 12px;
+  max-font-size: 16px;
+}
+
+/* 确保body占满屏幕，且文字不溢出 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* 电脑端适配（屏幕宽度≥768px时） */
+@media (min-width: 768px) {
+  html {
+    font-size: 16px; /* 电脑端恢复正常字号 */
+  }
+}
