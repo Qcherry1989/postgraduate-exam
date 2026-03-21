@@ -14,7 +14,7 @@ app.use(express.json());
 // ⚠️ 把这里的 密码 换成你 MongoDB Atlas 的数据库密码
 // ==============================================
 const MONGO_PASSWORD = "040914";
-const mongoURI = `mongodb+srv://admin:${MONGO_PASSWORD}@cluster0.mongodb.net/examDB?retryWrites=true&w=majority`;
+const mongoURI = `mongodb://admin:040914@ac-vcm0e6g-shard-00-00.tuisucg.mongodb.net:27017,ac-vcm0e6g-shard-00-01.tuisucg.mongodb.net:27017,ac-vcm0e6g-shard-00-02.tuisucg.mongodb.net:27017/examDB?ssl=true&replicaSet=atlas-sq4s16-shard-0&authSource=admin&appName=Cluster0`;
 
 // 连接云端数据库
 mongoose.connect(mongoURI)
