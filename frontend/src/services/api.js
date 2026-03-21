@@ -1,5 +1,5 @@
 import axios from 'axios';
-const API = 'http://localhost:5000/api';
+const API = 'https://postgraduate-exam.onrender.com/api';
 
 export const api = {
   addQuestion: (data) => axios.post(`${API}/questions`, data),

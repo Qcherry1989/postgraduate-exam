@@ -179,7 +179,7 @@ function QuestionManager() {
       if (keyword) params.append('keyword', keyword);
       if (sortOrder) params.append('sort', sortOrder);
 
-      const res = await fetch(`http://localhost:5000/api/questions?${params.toString()}`);
+      const res = await fetch(`https://postgraduate-exam.onrender.com/api/questions?${params.toString()}`);
       const data = await res.json();
       setQuestions(data);
     } catch (err) {
@@ -212,7 +212,7 @@ function QuestionManager() {
         delete submitData.translation;
         delete submitData.answer_translation;
       }
-      await fetch('http://localhost:5000/api/questions', {
+      await fetch('https://postgraduate-exam.onrender.com/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData)
@@ -230,7 +230,7 @@ function QuestionManager() {
   const handleDelete = async (id) => {
     if (window.confirm('确定要删除这道题吗？')) {
       try {
-        await fetch(`http://localhost:5000/api/questions/${id}`, { method: 'DELETE' });
+        await fetch(`https://postgraduate-exam.onrender.com/api/questions/${id}`, { method: 'DELETE' });
         alert('✅ 删除成功！');
         loadQuestions();
       } catch (err) {
@@ -253,7 +253,7 @@ function QuestionManager() {
 
   const handleEditSave = async () => {
     try {
-      await fetch(`http://localhost:5000/api/questions/${editingQuestion.id}`, {
+      await fetch(`https://postgraduate-exam.onrender.com/api/questions/${editingQuestion.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)
@@ -270,7 +270,7 @@ function QuestionManager() {
   const exportToWord = async () => {
     try {
       // 获取所有题目数据
-      const res = await fetch('http://localhost:5000/api/questions');
+      const res = await fetch('https://postgraduate-exam.onrender.com/api/questions');
       const allQuestions = await res.json();
 
       // 构建Word文档内容
@@ -1831,7 +1831,7 @@ function ExamRoom() {
       params.append('chinese_count', chineseCount);
       params.append('english_count', englishCount);
 
-      const res = await fetch(`http://localhost:5000/api/questions/random?${params.toString()}`);
+      const res = await fetch(`https://postgraduate-exam.onrender.com/api/questions/random?${params.toString()}`);
       const data = await res.json();
       setQuestions(data);
       setAnswers({});
@@ -1849,7 +1849,7 @@ function ExamRoom() {
     if (!answers[q.id]) return alert('请输入答案！');
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/questions/grade', {
+      const res = await fetch('https://postgraduate-exam.onrender.com/api/questions/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId: q.id, userAnswer: answers[q.id] })

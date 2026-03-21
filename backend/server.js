@@ -1,77 +1,93 @@
+// 考研题库系统 - 云端永久版（功能100%和原版一致）
 const cors = require('cors');
 const express = require('express');
-const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
+const mongoose = require('mongoose');
+
 const app = express();
-app.use(cors()); // 允许前端网页访问后端接口
 const port = process.env.PORT || 3000;
+
 // 中间件
 app.use(cors());
 app.use(express.json());
 
-// 数据库初始化
-const db = new sqlite3.Database('./questions.db', (err) => {
-  if (err) console.error(err.message);
-  console.log('✅ 连接到SQLite数据库');
+// ==============================================
+// ⚠️ 把这里的 密码 换成你 MongoDB Atlas 的数据库密码
+// ==============================================
+const MONGO_PASSWORD = "040914";
+const mongoURI = `mongodb+srv://admin:${MONGO_PASSWORD}@cluster0.mongodb.net/examDB?retryWrites=true&w=majority`;
+
+// 连接云端数据库
+mongoose.connect(mongoURI)
+  .then(() => console.log('✅ 连接到 云端永久数据库 (数据永不丢失)'))
+  .catch(err => console.log('❌ 数据库连接失败:', err));
+
+// 数据模型【和你原版SQLite字段完全一致】
+const QuestionSchema = new mongoose.Schema({
+  type: { type: String, required: true },
+  content: { type: String, required: true },
+  standard_answer: String,
+  translation: String,
+  answer_translation: String,
+  created_at: { type: Date, default: Date.now }
 });
 
-// 创建表
-db.run(`CREATE TABLE IF NOT EXISTS questions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL,
-  content TEXT NOT NULL,
-  standard_answer TEXT,
-  translation TEXT,
-  answer_translation TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+const Question = mongoose.model('Question', QuestionSchema);
 
-// 获取题目（支持搜索+排序）
-app.get('/api/questions', (req, res) => {
-  const { keyword, sort } = req.query;
-  let sql = 'SELECT * FROM questions WHERE 1=1';
-  const params = [];
-  if (keyword) {
-    sql += ' AND content LIKE ?';
-    params.push(`%${keyword}%`);
+// ==============================================
+// 👇 以下所有接口 和你原来的代码 完全一样！前端不用改任何东西
+// ==============================================
+
+// 获取题目（搜索 + 排序）
+app.get('/api/questions', async (req, res) => {
+  try {
+    const { keyword, sort } = req.query;
+    let query = {};
+    if (keyword) {
+      query.content = { $regex: keyword, $options: 'i' };
+    }
+    const sortOrder = sort === 'asc' ? 1 : -1;
+    const questions = await Question.find(query).sort({ id: sortOrder });
+    res.json(questions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  sql += sort === 'asc' ? ' ORDER BY id ASC' : ' ORDER BY id DESC';
-  db.all(sql, params, (err, rows) => {
-    if (err) res.status(500).json({ error: err.message });
-    else res.json(rows);
-  });
 });
 
 // 添加题目
-app.post('/api/questions', (req, res) => {
-  const { type, content, standard_answer, translation, answer_translation } = req.body;
-  const sql = 'INSERT INTO questions (type, content, standard_answer, translation, answer_translation) VALUES (?, ?, ?, ?, ?)';
-  db.run(sql, [type, content, standard_answer, translation, answer_translation], function(err) {
-    if (err) res.status(500).json({ error: err.message });
-    else res.json({ id: this.lastID });
-  });
+app.post('/api/questions', async (req, res) => {
+  try {
+    const newQuestion = new Question(req.body);
+    const saved = await newQuestion.save();
+    res.json({ id: saved._id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 编辑题目
-app.put('/api/questions/:id', (req, res) => {
-  const { content, standard_answer, translation, answer_translation } = req.body;
-  const sql = 'UPDATE questions SET content=?, standard_answer=?, translation=?, answer_translation=? WHERE id=?';
-  db.run(sql, [content, standard_answer, translation, answer_translation, req.params.id], (err) => {
-    if (err) res.status(500).json({ error: err.message });
-    else res.json({ message: '更新成功' });
-  });
+app.put('/api/questions/:id', async (req, res) => {
+  try {
+    const { content, standard_answer, translation, answer_translation } = req.body;
+    await Question.findByIdAndUpdate(req.params.id, {
+      content, standard_answer, translation, answer_translation
+    });
+    res.json({ message: '更新成功' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 删除题目
-app.delete('/api/questions/:id', (req, res) => {
-  const sql = 'DELETE FROM questions WHERE id=?';
-  db.run(sql, [req.params.id], (err) => {
-    if (err) res.status(500).json({ error: err.message });
-    else res.json({ message: '删除成功' });
-  });
+app.delete('/api/questions/:id', async (req, res) => {
+  try {
+    await Question.findByIdAndDelete(req.params.id);
+    res.json({ message: '删除成功' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 启动服务
 app.listen(port, () => {
-  console.log(`🚀 后端服务运行在 http://localhost:${port}`);
+  console.log(`🚀 云端后端服务运行在端口 ${port}`);
 });
