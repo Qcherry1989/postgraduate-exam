@@ -54,7 +54,6 @@ function Nav() {
         alignItems: 'center',
         height: '64px'
       }}>
-        {/* 标题区域：移动端简写，桌面端完整 */}
         <div style={{ 
           fontSize: isMobile ? '15px' : '18px', 
           fontWeight: 600, 
@@ -70,7 +69,6 @@ function Nav() {
           </span>
         </div>
         
-        {/* 桌面端导航按钮 */}
         <div style={{ 
           position: 'static',
           display: 'flex', 
@@ -168,7 +166,6 @@ function Nav() {
           </button>
         </div>
 
-        {/* 移动端汉堡菜单按钮 */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           style={{
@@ -191,7 +188,6 @@ function Nav() {
         </button>
       </div>
 
-      {/* 移动端展开菜单 */}
       {mobileMenuOpen && (
         <div style={{
           display: 'none',
@@ -204,10 +200,7 @@ function Nav() {
           }
         }}>
           <button 
-            onClick={() => {
-              navigate('/');
-              setMobileMenuOpen(false);
-            }} 
+            onClick={() => { navigate('/'); setMobileMenuOpen(false); }} 
             style={{
               padding: '12px 16px',
               borderRadius: '8px',
@@ -226,10 +219,7 @@ function Nav() {
             题库管理
           </button>
           <button 
-            onClick={() => {
-              navigate('/exam');
-              setMobileMenuOpen(false);
-            }} 
+            onClick={() => { navigate('/exam'); setMobileMenuOpen(false); }} 
             style={{
               padding: '12px 16px',
               borderRadius: '8px',
@@ -248,10 +238,7 @@ function Nav() {
             模拟复试
           </button>
           <button 
-            onClick={() => {
-              navigate('/settings');
-              setMobileMenuOpen(false);
-            }} 
+            onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }} 
             style={{
               padding: '12px 16px',
               borderRadius: '8px',
@@ -274,7 +261,7 @@ function Nav() {
   );
 }
 
-// 题库管理组件 - 移动端样式适配 + 分页 + 加载动画
+// 题库管理组件 - 移动端样式适配 + 分页 + 加载动画 + 勾选功能
 function QuestionManager() {
   const [form, setForm] = useState({ 
     type: 'chinese', 
@@ -295,11 +282,21 @@ function QuestionManager() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [exportOption, setExportOption] = useState('with-answer');
 
-  // 分页相关状态
+  // 分页相关
   const [currentPage, setCurrentPage] = useState(1);
   const [questionsPerPage] = useState(10);
 
-  const loadQuestions = async (forceRefresh = false) => {
+  // 勾选相关
+  const [selectedIds, setSelectedIds] = useState(() => {
+    const saved = localStorage.getItem('selectedQuestionIds');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('selectedQuestionIds', JSON.stringify(selectedIds));
+  }, [selectedIds]);
+
+  const loadQuestions = async () => {
     setLoadingQuestions(true);
     try {
       const params = new URLSearchParams();
@@ -318,10 +315,8 @@ function QuestionManager() {
 
   useEffect(() => {
     loadQuestions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, sortOrder]);
 
-  // 分页计算
   const indexOfLast = currentPage * questionsPerPage;
   const indexOfFirst = indexOfLast - questionsPerPage;
   const currentQuestions = questions.slice(indexOfFirst, indexOfLast);
@@ -332,6 +327,21 @@ function QuestionManager() {
   };
   const goToNextPage = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const selectAllCurrentPage = () => {
+    const currentIds = currentQuestions.map(q => q._id);
+    setSelectedIds(prev => [...new Set([...prev, ...currentIds])]);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
   };
 
   const handleSubmit = async (e) => {
@@ -359,7 +369,7 @@ function QuestionManager() {
       });
       alert('✅ 题目添加成功！');
       setForm({ type: form.type, content: '', standard_answer: '', translation: '', answer_translation: '' });
-      loadQuestions(true);
+      loadQuestions();
     } catch (err) {
       alert('❌ 添加失败');
     }
@@ -371,7 +381,8 @@ function QuestionManager() {
       try {
         await fetch(`https://postgraduate-exam.onrender.com/api/questions/${id}`, { method: 'DELETE' });
         alert('✅ 删除成功！');
-        loadQuestions(true);
+        setSelectedIds(prev => prev.filter(i => i !== id));
+        loadQuestions();
       } catch (err) {
         alert('❌ 删除失败');
       }
@@ -398,7 +409,7 @@ function QuestionManager() {
       });
       alert('✅ 保存成功！');
       setShowEditModal(false);
-      loadQuestions(true);
+      loadQuestions();
     } catch (err) {
       alert('❌ 保存失败');
     }
@@ -1024,8 +1035,51 @@ function QuestionManager() {
         )}
 
         {showList && (
-          <div style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-            {/* 加载动画 */}
+          <div>
+            {/* 勾选操作栏 */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '16px', 
+              gap: '8px', 
+              flexWrap: 'wrap' 
+            }}>
+              <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                已选中 {selectedIds.length} 道题
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={selectAllCurrentPage} 
+                  style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '6px', 
+                    border: '1px solid rgba(0,0,0,0.1)', 
+                    background: 'white', 
+                    cursor: 'pointer', 
+                    fontSize: '12px', 
+                    color: '#374151' 
+                  }}
+                >
+                  全选当前页
+                </button>
+                <button 
+                  onClick={clearSelection} 
+                  style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '6px', 
+                    border: '1px solid rgba(0,0,0,0.1)', 
+                    background: 'white', 
+                    cursor: 'pointer', 
+                    fontSize: '12px', 
+                    color: '#dc2626' 
+                  }}
+                >
+                  清空全部
+                </button>
+              </div>
+            </div>
+
             {loadingQuestions ? (
               <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                 <div style={{
@@ -1076,35 +1130,44 @@ function QuestionManager() {
                       flexWrap: 'wrap',
                       gap: '10px'
                     }}>
-                      <div style={{ flex: '1 1 100%' }}>
-                        <div style={{ marginBottom: '12px' }}>
-                          <span style={{ 
-                            padding: '4px 10px', 
-                            background: q.type === 'chinese' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
-                            borderRadius: '20px', 
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            color: q.type === 'chinese' ? '#1d4ed8' : '#92400e'
+                      <div style={{ flex: '1 1 100%', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(q._id)}
+                          onChange={() => toggleSelect(q._id)}
+                          style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ marginBottom: '12px' }}>
+                            <span style={{ 
+                              padding: '4px 10px', 
+                              background: q.type === 'chinese' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
+                              borderRadius: '20px', 
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              color: q.type === 'chinese' ? '#1d4ed8' : '#92400e'
+                            }}>
+                              {q.type === 'chinese' ? '中文题' : '英文题'}
+                            </span>
+                          </div>
+                          <h4 style={{ 
+                            margin: '0 0 0 0', 
+                            fontSize: '16px',
+                            color: '#111827',
+                            lineHeight: '1.6',
+                            fontWeight: 500
                           }}>
-                            {q.type === 'chinese' ? '中文题' : '英文题'}
-                          </span>
+                            {indexOfFirst + index + 1}. {q.content}
+                          </h4>
                         </div>
-                        <h4 style={{ 
-                          margin: '0 0 0 0', 
-                          fontSize: '16px',
-                          color: '#111827',
-                          lineHeight: '1.6',
-                          fontWeight: 500
-                        }}>
-                          {indexOfFirst + index + 1}. {q.content}
-                        </h4>
                       </div>
                       <div style={{ 
                         display: 'flex', 
                         gap: '8px', 
                         marginLeft: '0',
                         flex: '1 1 100%',
-                        marginTop: '10px'
+                        marginTop: '10px',
+                        marginLeft: '30px'
                       }}>
                         <button 
                           onClick={() => handleEditClick(q)} 
@@ -1297,7 +1360,6 @@ function QuestionManager() {
               overflow: 'hidden'
             }}
           >
-            {/* 弹窗头部 */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -1307,15 +1369,7 @@ function QuestionManager() {
               flexShrink: 0,
               background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.8) 100%)'
             }}>
-              <h3 style={{ 
-                margin: 0, 
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#111827',
-                letterSpacing: '-0.2px'
-              }}>
-                编辑题目
-              </h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111827' }}>编辑题目</h3>
               <button 
                 onClick={() => setShowEditModal(false)} 
                 style={{ 
@@ -1332,20 +1386,11 @@ function QuestionManager() {
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(0, 0, 0, 0.1)';
-                  e.target.style.color = '#111827';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'rgba(0, 0, 0, 0.06)';
-                  e.target.style.color = '#6b7280';
-                }}
               >
                 ✕
               </button>
             </div>
             
-            {/* 滚动内容区 */}
             <div style={{
               flex: 1,
               overflowY: 'auto',
@@ -1353,13 +1398,7 @@ function QuestionManager() {
               paddingRight: '16px'
             }}>
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: 500,
-                  color: '#374151',
-                  fontSize: '14px'
-                }}>题目内容</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>题目内容</label>
                 <textarea 
                   style={{ 
                     width: '100%', 
@@ -1370,7 +1409,6 @@ function QuestionManager() {
                     maxHeight: '150px',
                     fontSize: '15px',
                     lineHeight: '1.6',
-                    transition: 'all 0.2s ease',
                     resize: 'vertical',
                     background: 'rgba(255,255,255,0.9)',
                     outline: 'none',
@@ -1378,25 +1416,11 @@ function QuestionManager() {
                   }} 
                   value={editForm.content} 
                   onChange={e => setEditForm({...editForm, content: e.target.value})} 
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(0,0,0,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
                 />
               </div>
               {editingQuestion?.type === 'english' && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
-                    fontWeight: 500,
-                    color: '#374151',
-                    fontSize: '14px'
-                  }}>题目翻译</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>题目翻译</label>
                   <textarea 
                     style={{ 
                       width: '100%', 
@@ -1407,7 +1431,6 @@ function QuestionManager() {
                       maxHeight: '150px',
                       fontSize: '15px',
                       lineHeight: '1.6',
-                      transition: 'all 0.2s ease',
                       resize: 'vertical',
                       background: 'rgba(255,255,255,0.9)',
                       outline: 'none',
@@ -1415,25 +1438,11 @@ function QuestionManager() {
                     }} 
                     value={editForm.translation} 
                     onChange={e => setEditForm({...editForm, translation: e.target.value})} 
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(0,0,0,0.1)';
-                      e.target.style.boxShadow = 'none';
-                    }}
                   />
                 </div>
               )}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: 500,
-                  color: '#374151',
-                  fontSize: '14px'
-                }}>标准答案</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>标准答案</label>
                 <textarea 
                   style={{ 
                     width: '100%', 
@@ -1444,7 +1453,6 @@ function QuestionManager() {
                     maxHeight: '200px',
                     fontSize: '15px',
                     lineHeight: '1.6',
-                    transition: 'all 0.2s ease',
                     resize: 'vertical',
                     background: 'rgba(255,255,255,0.9)',
                     outline: 'none',
@@ -1452,25 +1460,11 @@ function QuestionManager() {
                   }} 
                   value={editForm.standard_answer} 
                   onChange={e => setEditForm({...editForm, standard_answer: e.target.value})} 
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(0,0,0,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
                 />
               </div>
               {editingQuestion?.type === 'english' && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
-                    fontWeight: 500,
-                    color: '#374151',
-                    fontSize: '14px'
-                  }}>答案翻译</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>答案翻译</label>
                   <textarea 
                     style={{ 
                       width: '100%', 
@@ -1481,7 +1475,6 @@ function QuestionManager() {
                       maxHeight: '150px',
                       fontSize: '15px',
                       lineHeight: '1.6',
-                      transition: 'all 0.2s ease',
                       resize: 'vertical',
                       background: 'rgba(255,255,255,0.9)',
                       outline: 'none',
@@ -1489,20 +1482,11 @@ function QuestionManager() {
                     }} 
                     value={editForm.answer_translation} 
                     onChange={e => setEditForm({...editForm, answer_translation: e.target.value})} 
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(0,0,0,0.1)';
-                      e.target.style.boxShadow = 'none';
-                    }}
                   />
                 </div>
               )}
             </div>
             
-            {/* 底部固定按钮 */}
             <div style={{
               display: 'flex',
               justifyContent: 'flex-end',
@@ -1526,12 +1510,6 @@ function QuestionManager() {
                   transition: 'all 0.2s ease',
                   flex: '1'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(0,0,0,0.02)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'white';
-                }}
               >
                 取消
               </button>
@@ -1548,14 +1526,6 @@ function QuestionManager() {
                   fontWeight: 500,
                   transition: 'all 0.2s ease',
                   flex: '1'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = '#000';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = '#111827';
-                  e.target.style.transform = 'translateY(0)';
                 }}
               >
                 保存修改
@@ -2026,7 +1996,7 @@ function SpeechSettings() {
   );
 }
 
-// 模拟复试组件 - 修复朗读功能和移动端适配
+// 模拟复试组件 - 增加“仅从勾选题目中抽取”选项
 function ExamRoom() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -2036,6 +2006,7 @@ function ExamRoom() {
   const [chineseCount, setChineseCount] = useState(2);
   const [englishCount, setEnglishCount] = useState(1);
   const [showQuestion, setShowQuestion] = useState({});
+  const [useSelected, setUseSelected] = useState(false);
 
   const speak = (text, lang = 'zh-CN') => {
     try {
@@ -2071,28 +2042,61 @@ function ExamRoom() {
 
     setLoading(true);
     try {
-      const allRes = await fetch('https://postgraduate-exam.onrender.com/api/questions');
-      const allData = await allRes.json();
-      
-      if (allData.length === 0) {
-        alert('题库中没有题目！');
-        setLoading(false);
-        return;
+      let allData;
+      if (useSelected) {
+        const selectedIds = JSON.parse(localStorage.getItem('selectedQuestionIds') || '[]');
+        if (selectedIds.length === 0) {
+          alert('没有勾选任何题目，请先在题库管理页面勾选题目！');
+          setLoading(false);
+          return;
+        }
+        const res = await fetch('https://postgraduate-exam.onrender.com/api/questions');
+        const fullData = await res.json();
+        allData = fullData.filter(q => selectedIds.includes(q._id));
+        if (allData.length === 0) {
+          alert('勾选的题目已不存在，请重新勾选！');
+          setLoading(false);
+          return;
+        }
+      } else {
+        const res = await fetch('https://postgraduate-exam.onrender.com/api/questions');
+        allData = await res.json();
+        if (allData.length === 0) {
+          alert('题库中没有题目！');
+          setLoading(false);
+          return;
+        }
       }
 
       const chineseQuestions = allData.filter(q => q.type === 'chinese');
       const englishQuestions = allData.filter(q => q.type === 'english');
-      
-      const randomChinese = chineseQuestions
-        .sort(() => Math.random() - 0.5)
-        .slice(0, chineseCount);
-      const randomEnglish = englishQuestions
-        .sort(() => Math.random() - 0.5)
-        .slice(0, englishCount);
-      
+
+      if (useSelected) {
+        if (chineseQuestions.length < chineseCount) {
+          alert(`勾选的中文题不足，仅勾选了 ${chineseQuestions.length} 道，需要 ${chineseCount} 道。`);
+          setLoading(false);
+          return;
+        }
+        if (englishQuestions.length < englishCount) {
+          alert(`勾选的英文题不足，仅勾选了 ${englishQuestions.length} 道，需要 ${englishCount} 道。`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const randomSelect = (arr, count) => {
+        const shuffled = [...arr];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, count);
+      };
+
+      const randomChinese = randomSelect(chineseQuestions, chineseCount);
+      const randomEnglish = randomSelect(englishQuestions, englishCount);
       const finalQuestions = [...randomChinese, ...randomEnglish];
       setQuestions(finalQuestions);
-      
       setAnswers({});
       setResults({});
       setShowAnswer({});
@@ -2164,6 +2168,26 @@ function ExamRoom() {
           设置题目数量，点击按钮随机抽题进行模拟面试练习
         </p>
 
+        {/* 仅从勾选题目中抽取复选框 */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          marginBottom: '20px', 
+          gap: '8px' 
+        }}>
+          <input
+            type="checkbox"
+            id="useSelected"
+            checked={useSelected}
+            onChange={(e) => setUseSelected(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <label htmlFor="useSelected" style={{ fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
+            📌 仅从勾选题目中抽取（请在题库管理页面勾选题目）
+          </label>
+        </div>
+
         <div style={{
           display: 'flex',
           gap: '16px',
@@ -2179,11 +2203,7 @@ function ExamRoom() {
             flex: '1 1 100%',
             marginBottom: '8px'
           }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#374151'
-            }}>中文题数量：</label>
+            <label style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>中文题数量：</label>
             <input
               type="number"
               min="0"
@@ -2199,14 +2219,6 @@ function ExamRoom() {
                 textAlign: 'center',
                 transition: 'all 0.2s ease'
               }}
-              onFocus={(e) => {
-                e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(0,0,0,0.08)';
-                e.target.style.boxShadow = 'none';
-              }}
             />
           </div>
           <div style={{
@@ -2215,11 +2227,7 @@ function ExamRoom() {
             gap: '8px',
             flex: '1 1 100%'
           }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#374151'
-            }}>英文题数量：</label>
+            <label style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>英文题数量：</label>
             <input
               type="number"
               min="0"
@@ -2234,14 +2242,6 @@ function ExamRoom() {
                 outline: 'none',
                 textAlign: 'center',
                 transition: 'all 0.2s ease'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(0,0,0,0.08)';
-                e.target.style.boxShadow = 'none';
               }}
             />
           </div>
@@ -2283,6 +2283,7 @@ function ExamRoom() {
         </button>
       </div>
 
+      {/* 抽题结果展示 */}
       {questions.length > 0 && questions.map((q, index) => (
         <div 
           key={q._id} 
