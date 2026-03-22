@@ -11,9 +11,7 @@ const globalStyles = {
     padding: 0,
     color: '#1f2937',
     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-    // 移动端禁止横向滚动
     overflowX: 'hidden',
-    // 适配移动端字体缩放
     fontSize: '16px',
     '@media (max-width: 768px)': {
       fontSize: '15px'
@@ -25,7 +23,6 @@ const globalStyles = {
 function Nav() {
   const location = useLocation();
   const navigate = useNavigate();
-  // 移动端菜单折叠状态
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -44,9 +41,9 @@ function Nav() {
       <div style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        padding: '0 16px', // 移动端减小左右内边距
+        padding: '0 16px',
         display: 'flex',
-        justifyContent: 'space-between', // 改为两端对齐，适配移动端
+        justifyContent: 'space-between',
         alignItems: 'center',
         height: '64px'
       }}>
@@ -61,7 +58,6 @@ function Nav() {
         }}>
           <span style={{ fontSize: '22px' }}>🎓</span>
           <span style={{ 
-            // 移动端缩小标题字体
             fontSize: '16px',
             '@media (min-width: 768px)': {
               fontSize: '18px'
@@ -71,10 +67,9 @@ function Nav() {
         
         {/* 桌面端导航按钮 */}
         <div style={{ 
-          position: 'static', // 取消绝对定位，适配移动端
+          position: 'static',
           display: 'flex', 
           gap: '8px',
-          // 移动端隐藏，显示汉堡菜单
           '@media (max-width: 768px)': {
             display: 'none'
           }
@@ -274,7 +269,7 @@ function Nav() {
   );
 }
 
-// 题库管理组件 - 移动端样式适配
+// 题库管理组件 - 移动端样式适配 + 分页 + 加载动画
 function QuestionManager() {
   const [form, setForm] = useState({ 
     type: 'chinese', 
@@ -286,6 +281,7 @@ function QuestionManager() {
   const [answerMode, setAnswerMode] = useState('ai');
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(true);  // 加载题目时的动画状态
   const [showList, setShowList] = useState(true);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -294,17 +290,28 @@ function QuestionManager() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [exportOption, setExportOption] = useState('with-answer');
 
-  const loadQuestions = async () => {
+  // 分页相关状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [questionsPerPage] = useState(10);   // 每页显示10题
+
+  // 加载题目（支持缓存）
+  const loadQuestions = async (forceRefresh = false) => {
+    setLoadingQuestions(true);
     try {
+      // 如果有缓存且不是强制刷新，先显示缓存（但这里不强制缓存，直接请求，但为了冷启动优化，可以保留）
+      // 直接请求后端
       const params = new URLSearchParams();
       if (keyword) params.append('keyword', keyword);
       if (sortOrder) params.append('sort', sortOrder);
-
       const res = await fetch(`https://postgraduate-exam.onrender.com/api/questions?${params.toString()}`);
       const data = await res.json();
       setQuestions(data);
+      // 重置到第一页
+      setCurrentPage(1);
     } catch (err) {
       console.error('加载失败:', err);
+    } finally {
+      setLoadingQuestions(false);
     }
   };
 
@@ -312,6 +319,20 @@ function QuestionManager() {
     loadQuestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, sortOrder]);
+
+  // 分页计算
+  const indexOfLast = currentPage * questionsPerPage;
+  const indexOfFirst = indexOfLast - questionsPerPage;
+  const currentQuestions = questions.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(questions.length / questionsPerPage);
+
+  // 翻页函数
+  const goToPrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+  const goToNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -338,7 +359,7 @@ function QuestionManager() {
       });
       alert('✅ 题目添加成功！');
       setForm({ type: form.type, content: '', standard_answer: '', translation: '', answer_translation: '' });
-      loadQuestions();
+      loadQuestions(true); // 强制刷新
     } catch (err) {
       alert('❌ 添加失败');
     }
@@ -350,7 +371,7 @@ function QuestionManager() {
       try {
         await fetch(`https://postgraduate-exam.onrender.com/api/questions/${id}`, { method: 'DELETE' });
         alert('✅ 删除成功！');
-        loadQuestions();
+        loadQuestions(true);
       } catch (err) {
         alert('❌ 删除失败');
       }
@@ -370,14 +391,14 @@ function QuestionManager() {
 
   const handleEditSave = async () => {
     try {
-      await fetch(`https://postgraduate-exam.onrender.com/api/questions/${editingQuestion.id}`, {
+      await fetch(`https://postgraduate-exam.onrender.com/api/questions/${editingQuestion._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)
       });
       alert('✅ 保存成功！');
       setShowEditModal(false);
-      loadQuestions();
+      loadQuestions(true);
     } catch (err) {
       alert('❌ 保存失败');
     }
@@ -460,15 +481,15 @@ function QuestionManager() {
       gap: '20px', 
       maxWidth: '900px', 
       margin: '0 auto', 
-      padding: '20px 16px', // 移动端减小上下内边距，左右用16px适配
+      padding: '20px 16px',
       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
-      {/* 添加题目卡片 - 移动端适配 */}
+      {/* 添加题目卡片 */}
       <div style={{ 
         background: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(10px)',
         borderRadius: '16px', 
-        padding: '20px 16px', // 移动端减小内边距
+        padding: '20px 16px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
         border: '1px solid rgba(255,255,255,0.8)',
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -481,8 +502,8 @@ function QuestionManager() {
       }}
       >
         <h2 style={{ 
-          margin: '0 0 20px 0', // 移动端减小下边距
-          fontSize: '18px', // 移动端缩小标题
+          margin: '0 0 20px 0',
+          fontSize: '18px',
           color: '#111827',
           fontWeight: 600,
           letterSpacing: '-0.3px'
@@ -502,7 +523,6 @@ function QuestionManager() {
             <div style={{ 
               display: 'flex', 
               gap: '12px',
-              // 移动端换行
               flexWrap: 'wrap'
             }}>
               <label style={{
@@ -514,7 +534,7 @@ function QuestionManager() {
                 borderRadius: '10px',
                 background: form.type === 'chinese' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0,0,0,0.02)',
                 border: `1px solid ${form.type === 'chinese' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0,0,0,0.06)'}`,
-                flex: '1 1 calc(50% - 6px)', // 移动端每行两个
+                flex: '1 1 calc(50% - 6px)',
                 minWidth: '120px'
               }}>
                 <input 
@@ -784,7 +804,6 @@ function QuestionManager() {
               alignItems: 'center',
               gap: '8px',
               opacity: loading ? 0.6 : 1,
-              // 移动端按钮宽度自适应
               width: '100%',
               justifyContent: 'center'
             }}
@@ -806,12 +825,12 @@ function QuestionManager() {
         </form>
       </div>
 
-      {/* 题目列表卡片 - 移动端适配 */}
+      {/* 题目列表卡片 */}
       <div style={{ 
         background: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(10px)',
         borderRadius: '16px', 
-        padding: '20px 16px', // 移动端减小内边距
+        padding: '20px 16px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
         border: '1px solid rgba(255,255,255,0.8)',
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -828,13 +847,12 @@ function QuestionManager() {
           justifyContent: 'space-between', 
           alignItems: 'center', 
           marginBottom: '20px',
-          // 移动端换行
           flexWrap: 'wrap',
           gap: '10px'
         }}>
           <h2 style={{ 
             margin: 0, 
-            fontSize: '18px', // 移动端缩小标题
+            fontSize: '18px',
             color: '#111827',
             fontWeight: 600,
             letterSpacing: '-0.3px'
@@ -852,14 +870,12 @@ function QuestionManager() {
           </h2>
           <div style={{ 
             display: 'flex', 
-            gap: '8px', // 移动端减小间距
-            // 移动端自适应宽度
+            gap: '8px',
             width: '100%',
             '@media (min-width: 768px)': {
               width: 'auto'
             }
           }}>
-            {/* 导出选项下拉菜单 */}
             <select
               value={exportOption}
               onChange={(e) => setExportOption(e.target.value)}
@@ -873,7 +889,6 @@ function QuestionManager() {
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 marginRight: '8px',
-                // 移动端占比调整
                 flex: '1'
               }}
               onFocus={(e) => {
@@ -944,7 +959,7 @@ function QuestionManager() {
           </div>
         </div>
 
-        {/* 搜索框 + 排序按钮 - 移动端适配 */}
+        {/* 搜索框 + 排序按钮 */}
         {showList && (
           <div style={{
             display: 'flex',
@@ -959,7 +974,7 @@ function QuestionManager() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               style={{
-                flex: '1 1 100%', // 移动端独占一行
+                flex: '1 1 100%',
                 minWidth: '200px',
                 padding: '10px 14px',
                 borderRadius: '10px',
@@ -991,7 +1006,7 @@ function QuestionManager() {
                 transition: 'all 0.2s ease',
                 fontSize: '14px',
                 whiteSpace: 'nowrap',
-                flex: '1 1 100%', // 移动端独占一行
+                flex: '1 1 100%',
                 marginTop: '8px'
               }}
               onMouseEnter={(e) => {
@@ -1010,178 +1025,242 @@ function QuestionManager() {
 
         {showList && (
           <div style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-            {questions.length === 0 ? (
+            {/* 加载动画 */}
+            {loadingQuestions ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{
+                  display: 'inline-block',
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid rgba(59, 130, 246, 0.2)',
+                  borderTop: '4px solid #3b82f6',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite'
+                }}></div>
+                <p style={{ marginTop: '16px', color: '#6b7280' }}>加载题目中...</p>
+              </div>
+            ) : questions.length === 0 ? (
               <div style={{
                 textAlign: 'center',
-                padding: '40px 20px', // 移动端减小内边距
+                padding: '40px 20px',
                 color: '#9ca3af'
               }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
                 <p style={{ margin: 0, fontSize: '15px' }}>暂无题目，请先在上方添加</p>
               </div>
             ) : (
-              questions.map((q, index) => (
-                <div 
-                  key={q.id} 
-                  style={{ 
-                    padding: '20px 16px', // 移动端减小内边距
-                    borderBottom: index === questions.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.04)', 
-                    marginBottom: '0',
-                    borderRadius: '12px',
-                    background: 'transparent',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(0,0,0,0.02)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'transparent';
-                  }}
-                >
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '16px',
-                    // 移动端换行
-                    flexWrap: 'wrap',
-                    gap: '10px'
-                  }}>
-                    <div style={{ flex: '1 1 100%' }}>
-                      <div style={{ marginBottom: '12px' }}>
-                        <span style={{ 
-                          padding: '4px 10px', 
-                          background: q.type === 'chinese' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
-                          borderRadius: '20px', 
-                          fontSize: '12px',
-                          fontWeight: 500,
-                          color: q.type === 'chinese' ? '#1d4ed8' : '#92400e'
-                        }}>
-                          {q.type === 'chinese' ? '中文题' : '英文题'}
-                        </span>
-                      </div>
-                      <h4 style={{ 
-                        margin: '0 0 0 0', 
-                        fontSize: '16px',
-                        color: '#111827',
-                        lineHeight: '1.6',
-                        fontWeight: 500
-                      }}>
-                        {index + 1}. {q.content}
-                      </h4>
-                    </div>
+              <>
+                {currentQuestions.map((q, index) => (
+                  <div 
+                    key={q._id} 
+                    style={{ 
+                      padding: '20px 16px',
+                      borderBottom: index === currentQuestions.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.04)', 
+                      marginBottom: '0',
+                      borderRadius: '12px',
+                      background: 'transparent',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(0,0,0,0.02)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'transparent';
+                    }}
+                  >
                     <div style={{ 
                       display: 'flex', 
-                      gap: '8px', 
-                      marginLeft: '0', // 移动端取消左边距
-                      flex: '1 1 100%',
-                      marginTop: '10px'
-                    }}>
-                      <button 
-                        onClick={() => handleEditClick(q)} 
-                        style={{ 
-                          padding: '8px 14px', 
-                          background: 'rgba(0,0,0,0.04)', 
-                          color: '#111827', 
-                          border: 'none', 
-                          borderRadius: '8px', 
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          transition: 'all 0.2s ease',
-                          flex: '1'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.background = 'rgba(0,0,0,0.08)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = 'rgba(0,0,0,0.04)';
-                        }}
-                      >
-                        编辑
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(q.id)} 
-                        style={{ 
-                          padding: '8px 14px', 
-                          background: 'rgba(239, 68, 68, 0.1)', 
-                          color: '#dc2626', 
-                          border: 'none', 
-                          borderRadius: '8px', 
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          transition: 'all 0.2s ease',
-                          flex: '1'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.background = 'rgba(239, 68, 68, 0.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = 'rgba(239, 68, 68, 0.1)';
-                        }}
-                      >
-                        删除
-                      </button>
-                    </div>
-                  </div>
-                  {q.translation && (
-                    <p style={{ 
-                      color: '#6b7280', 
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
                       marginBottom: '16px',
-                      padding: '12px 14px',
-                      background: 'rgba(0,0,0,0.02)',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      lineHeight: '1.6'
+                      flexWrap: 'wrap',
+                      gap: '10px'
                     }}>
-                      <strong style={{ color: '#374151', fontWeight: 500 }}>翻译：</strong>{q.translation}
-                    </p>
-                  )}
-                  <div style={{ 
-                    marginTop: '16px', 
-                    padding: '18px 16px', // 移动端减小内边距
-                    background: 'rgba(0,0,0,0.02)', 
-                    borderRadius: '12px'
-                  }}>
-                    <p style={{ 
-                      margin: '0 0 8px 0', 
-                      fontWeight: 500, 
-                      color: '#111827',
-                      fontSize: '14px'
-                    }}>
-                      标准答案：
-                    </p>
-                    <p style={{ 
-                      margin: '0 0 12px 0', 
-                      color: '#4b5563',
-                      lineHeight: '1.7',
-                      fontSize: '14px'
-                    }}>
-                      {q.standard_answer}
-                    </p>
-                    {q.answer_translation && (
+                      <div style={{ flex: '1 1 100%' }}>
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ 
+                            padding: '4px 10px', 
+                            background: q.type === 'chinese' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
+                            borderRadius: '20px', 
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            color: q.type === 'chinese' ? '#1d4ed8' : '#92400e'
+                          }}>
+                            {q.type === 'chinese' ? '中文题' : '英文题'}
+                          </span>
+                        </div>
+                        <h4 style={{ 
+                          margin: '0 0 0 0', 
+                          fontSize: '16px',
+                          color: '#111827',
+                          lineHeight: '1.6',
+                          fontWeight: 500
+                        }}>
+                          {indexOfFirst + index + 1}. {q.content}
+                        </h4>
+                      </div>
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '8px', 
+                        marginLeft: '0',
+                        flex: '1 1 100%',
+                        marginTop: '10px'
+                      }}>
+                        <button 
+                          onClick={() => handleEditClick(q)} 
+                          style={{ 
+                            padding: '8px 14px', 
+                            background: 'rgba(0,0,0,0.04)', 
+                            color: '#111827', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            transition: 'all 0.2s ease',
+                            flex: '1'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'rgba(0,0,0,0.08)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'rgba(0,0,0,0.04)';
+                          }}
+                        >
+                          编辑
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(q._id)} 
+                          style={{ 
+                            padding: '8px 14px', 
+                            background: 'rgba(239, 68, 68, 0.1)', 
+                            color: '#dc2626', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            transition: 'all 0.2s ease',
+                            flex: '1'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'rgba(239, 68, 68, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'rgba(239, 68, 68, 0.1)';
+                          }}
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                    {q.translation && (
                       <p style={{ 
                         color: '#6b7280', 
-                        marginTop: '12px',
+                        marginBottom: '16px',
                         padding: '12px 14px',
-                        background: 'rgba(255,255,255,0.8)',
+                        background: 'rgba(0,0,0,0.02)',
                         borderRadius: '10px',
                         fontSize: '14px',
                         lineHeight: '1.6'
                       }}>
-                        <strong style={{ color: '#374151', fontWeight: 500 }}>答案翻译：</strong>{q.answer_translation}
+                        <strong style={{ color: '#374151', fontWeight: 500 }}>翻译：</strong>{q.translation}
                       </p>
                     )}
+                    <div style={{ 
+                      marginTop: '16px', 
+                      padding: '18px 16px',
+                      background: 'rgba(0,0,0,0.02)', 
+                      borderRadius: '12px'
+                    }}>
+                      <p style={{ 
+                        margin: '0 0 8px 0', 
+                        fontWeight: 500, 
+                        color: '#111827',
+                        fontSize: '14px'
+                      }}>
+                        标准答案：
+                      </p>
+                      <p style={{ 
+                        margin: '0 0 12px 0', 
+                        color: '#4b5563',
+                        lineHeight: '1.7',
+                        fontSize: '14px'
+                      }}>
+                        {q.standard_answer}
+                      </p>
+                      {q.answer_translation && (
+                        <p style={{ 
+                          color: '#6b7280', 
+                          marginTop: '12px',
+                          padding: '12px 14px',
+                          background: 'rgba(255,255,255,0.8)',
+                          borderRadius: '10px',
+                          fontSize: '14px',
+                          lineHeight: '1.6'
+                        }}>
+                          <strong style={{ color: '#374151', fontWeight: 500 }}>答案翻译：</strong>{q.answer_translation}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+
+                {/* 分页控件 */}
+                {totalPages > 1 && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '16px',
+                    marginTop: '24px',
+                    paddingTop: '16px',
+                    borderTop: '1px solid rgba(0,0,0,0.06)'
+                  }}>
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={currentPage === 1}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        background: currentPage === 1 ? '#f3f4f6' : 'white',
+                        color: currentPage === 1 ? '#9ca3af' : '#374151',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      上一页
+                    </button>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                      第 {currentPage} / {totalPages} 页
+                    </span>
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        background: currentPage === totalPages ? '#f3f4f6' : 'white',
+                        color: currentPage === totalPages ? '#9ca3af' : '#374151',
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      下一页
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
       </div>
 
-      {/* 编辑弹窗 - 移动端适配 */}
+      {/* 编辑弹窗 */}
       {showEditModal && (
         <div 
           style={{ 
@@ -1197,7 +1276,7 @@ function QuestionManager() {
             justifyContent: 'center', 
             alignItems: 'center', 
             zIndex: 1000,
-            padding: '20px 16px', // 移动端添加左右内边距
+            padding: '20px 16px',
             animation: 'fadeIn 0.3s ease'
           }}
         >
@@ -1208,9 +1287,9 @@ function QuestionManager() {
               WebkitBackdropFilter: 'blur(20px) saturate(180%)',
               padding: '0', 
               borderRadius: '20px', 
-              width: '100%', // 移动端宽度100%
+              width: '100%',
               maxWidth: '680px',
-              maxHeight: '90vh', // 移动端增大高度占比
+              maxHeight: '90vh',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.5) inset',
               animation: 'slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               display: 'flex',
@@ -1223,7 +1302,7 @@ function QuestionManager() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '20px 16px', // 移动端减小内边距
+              padding: '20px 16px',
               borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
               flexShrink: 0,
               background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.8) 100%)'
@@ -1270,7 +1349,7 @@ function QuestionManager() {
             <div style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '20px 16px', // 移动端减小内边距
+              padding: '20px 16px',
               paddingRight: '16px'
             }}>
               <div style={{ marginBottom: '20px' }}>
@@ -1429,7 +1508,7 @@ function QuestionManager() {
               justifyContent: 'flex-end',
               gap: '12px',
               flexShrink: 0,
-              padding: '20px 16px', // 移动端减小内边距
+              padding: '20px 16px',
               borderTop: '1px solid rgba(0, 0, 0, 0.06)',
               background: 'linear-gradient(0deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.8) 100%)'
             }}>
@@ -1445,7 +1524,7 @@ function QuestionManager() {
                   fontWeight: 500,
                   color: '#374151',
                   transition: 'all 0.2s ease',
-                  flex: '1' // 移动端按钮均分宽度
+                  flex: '1'
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.background = 'rgba(0,0,0,0.02)';
@@ -1468,7 +1547,7 @@ function QuestionManager() {
                   fontSize: '14px',
                   fontWeight: 500,
                   transition: 'all 0.2s ease',
-                  flex: '1' // 移动端按钮均分宽度
+                  flex: '1'
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.background = '#000';
@@ -1496,25 +1575,20 @@ function SpeechSettings() {
   const [selectedEnglishVoice, setSelectedEnglishVoice] = useState('');
   const [speechRate, setSpeechRate] = useState(1.0);
   const [testText, setTestText] = useState({ chinese: '你好，这是中文音色测试', english: 'Hello, this is an English voice test' });
-  // 添加加载状态
   const [voiceLoading, setVoiceLoading] = useState(true);
 
-  // 修复：兼容移动端的音色加载逻辑
   useEffect(() => {
     const loadVoices = () => {
-      // 多次尝试获取音色（解决移动端异步加载问题）
       const getVoices = () => {
         const availableVoices = speechSynthesis.getVoices();
         if (availableVoices.length > 0) {
           setVoices(availableVoices);
           setVoiceLoading(false);
           
-          // 从本地存储读取设置
           const savedChineseVoice = localStorage.getItem('chineseVoiceName');
           const savedEnglishVoice = localStorage.getItem('englishVoiceName');
           const savedRate = localStorage.getItem('speechRate');
 
-          // 中文音色
           if (savedChineseVoice && availableVoices.find(v => v.name === savedChineseVoice)) {
             setSelectedChineseVoice(savedChineseVoice);
           } else {
@@ -1525,7 +1599,6 @@ function SpeechSettings() {
             }
           }
 
-          // 英文音色
           if (savedEnglishVoice && availableVoices.find(v => v.name === savedEnglishVoice)) {
             setSelectedEnglishVoice(savedEnglishVoice);
           } else {
@@ -1536,21 +1609,17 @@ function SpeechSettings() {
             }
           }
 
-          // 语速
           if (savedRate) {
             setSpeechRate(parseFloat(savedRate));
           } else {
             localStorage.setItem('speechRate', '1.0');
           }
         } else {
-          // 重试获取
           setTimeout(getVoices, 300);
         }
       };
 
       getVoices();
-      
-      // 监听音色加载事件
       speechSynthesis.onvoiceschanged = getVoices;
     };
 
@@ -1579,7 +1648,6 @@ function SpeechSettings() {
     localStorage.setItem('speechRate', rate.toString());
   };
 
-  // 修复：移动端朗读函数
   const speakTest = (text, lang) => {
     try {
       speechSynthesis.cancel();
@@ -1594,7 +1662,6 @@ function SpeechSettings() {
       utterance.volume = 1.0;
       utterance.pitch = 1.0;
 
-      // 修复：移动端需要用户交互触发
       speechSynthesis.speak(utterance);
     } catch (error) {
       console.error('朗读失败:', error);
@@ -1609,14 +1676,13 @@ function SpeechSettings() {
     <div style={{ 
       maxWidth: '800px', 
       margin: '0 auto', 
-      padding: '20px 16px', // 移动端减小内边距
+      padding: '20px 16px',
       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
-      {/* 页面标题 - 移动端适配 */}
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ 
           margin: '0 0 8px 0', 
-          fontSize: '24px', // 移动端缩小标题
+          fontSize: '24px',
           fontWeight: 700,
           color: '#111827',
           letterSpacing: '-0.5px'
@@ -1633,12 +1699,11 @@ function SpeechSettings() {
         </p>
       </div>
 
-      {/* 主设置卡片 - 移动端适配 */}
       <div style={{ 
         background: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(10px)',
         borderRadius: '20px', 
-        padding: '20px 16px', // 移动端减小内边距
+        padding: '20px 16px',
         marginBottom: '20px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
         border: '1px solid rgba(255,255,255,0.8)',
@@ -1651,7 +1716,6 @@ function SpeechSettings() {
         e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)';
       }}
       >
-        {/* 加载提示 */}
         {voiceLoading && (
           <div style={{
             padding: '20px',
@@ -1664,14 +1728,12 @@ function SpeechSettings() {
 
         {!voiceLoading && (
           <>
-            {/* 中文音色设置 */}
             <div style={{ marginBottom: '24px' }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '12px',
-                // 移动端换行
                 flexWrap: 'wrap',
                 gap: '10px'
               }}>
@@ -1697,7 +1759,6 @@ function SpeechSettings() {
                     fontSize: '13px',
                     fontWeight: 500,
                     transition: 'all 0.2s ease',
-                    // 移动端按钮宽度自适应
                     flex: '1 1 100%',
                     marginTop: '8px'
                   }}
@@ -1769,7 +1830,6 @@ function SpeechSettings() {
               />
             </div>
 
-            {/* 英文音色设置 */}
             <div style={{ marginBottom: '24px' }}>
               <div style={{
                 display: 'flex',
@@ -1872,7 +1932,6 @@ function SpeechSettings() {
               />
             </div>
 
-            {/* 语速调节设置 */}
             <div>
               <div style={{
                 display: 'flex',
@@ -1935,12 +1994,11 @@ function SpeechSettings() {
         )}
       </div>
 
-      {/* 提示卡片 - 移动端适配 */}
       <div style={{ 
         background: 'rgba(59, 130, 246, 0.05)',
         border: '1px solid rgba(59, 130, 246, 0.15)',
         borderRadius: '16px', 
-        padding: '16px 16px', // 移动端减小内边距
+        padding: '16px 16px',
       }}>
         <h4 style={{ 
           margin: '0 0 8px 0', 
@@ -1979,22 +2037,18 @@ function ExamRoom() {
   const [englishCount, setEnglishCount] = useState(1);
   const [showQuestion, setShowQuestion] = useState({});
 
-  // 修复：移动端兼容的朗读函数
   const speak = (text, lang = 'zh-CN') => {
     try {
       const utterance = new SpeechSynthesisUtterance(text);
       const voices = speechSynthesis.getVoices();
       
-      // 读取本地设置
       const savedChineseVoice = localStorage.getItem('chineseVoiceName');
       const savedEnglishVoice = localStorage.getItem('englishVoiceName');
       const savedRate = localStorage.getItem('speechRate');
 
-      // 匹配音色（兼容无指定音色的情况）
       const targetVoiceName = lang === 'zh-CN' ? savedChineseVoice : savedEnglishVoice;
       const targetVoice = voices.find(v => v.name === targetVoiceName) || voices.find(v => v.lang.startsWith(lang.split('-')[0])) || voices[0];
 
-      // 配置参数
       if (targetVoice) utterance.voice = targetVoice;
       utterance.lang = lang;
       utterance.rate = savedRate ? parseFloat(savedRate) : 1.0;
@@ -2051,16 +2105,16 @@ function ExamRoom() {
   };
 
   const submitAnswer = async (q) => {
-    if (!answers[q.id]) return alert('请输入答案！');
+    if (!answers[q._id]) return alert('请输入答案！');
     setLoading(true);
     try {
       const res = await fetch('https://postgraduate-exam.onrender.com/api/questions/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: q.id, userAnswer: answers[q.id] })
+        body: JSON.stringify({ questionId: q._id, userAnswer: answers[q._id] })
       });
       const data = await res.json();
-      setResults({ ...results, [q.id]: data.result });
+      setResults({ ...results, [q._id]: data.result });
     } catch (err) {
       alert('❌ 评分失败');
     }
@@ -2071,15 +2125,14 @@ function ExamRoom() {
     <div style={{ 
       maxWidth: '900px', 
       margin: '0 auto', 
-      padding: '20px 16px', // 移动端减小内边距
+      padding: '20px 16px',
       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
-      {/* 抽题主卡片 - 移动端适配 */}
       <div style={{ 
         background: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(10px)',
         borderRadius: '20px', 
-        padding: '30px 16px', // 移动端减小内边距
+        padding: '30px 16px',
         textAlign: 'center', 
         marginBottom: '20px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
@@ -2095,7 +2148,7 @@ function ExamRoom() {
       >
         <h1 style={{ 
           margin: '0 0 12px 0', 
-          fontSize: '24px', // 移动端缩小标题
+          fontSize: '24px',
           fontWeight: 700,
           color: '#111827',
           letterSpacing: '-0.5px'
@@ -2111,20 +2164,19 @@ function ExamRoom() {
           设置题目数量，点击按钮随机抽题进行模拟面试练习
         </p>
 
-        {/* 自定义题目数量 - 移动端适配 */}
         <div style={{
           display: 'flex',
-          gap: '16px', // 移动端减小间距
+          gap: '16px',
           justifyContent: 'center',
           alignItems: 'center',
           marginBottom: '20px',
-          flexWrap: 'wrap' // 移动端换行
+          flexWrap: 'wrap'
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px', // 移动端减小间距
-            flex: '1 1 100%', // 移动端独占一行
+            gap: '8px',
+            flex: '1 1 100%',
             marginBottom: '8px'
           }}>
             <label style={{
@@ -2161,7 +2213,7 @@ function ExamRoom() {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            flex: '1 1 100%' // 移动端独占一行
+            flex: '1 1 100%'
           }}>
             <label style={{
               fontSize: '14px',
@@ -2212,7 +2264,6 @@ function ExamRoom() {
             alignItems: 'center',
             gap: '10px',
             opacity: loading ? 0.6 : 1,
-            // 移动端按钮宽度100%
             width: '100%'
           }}
           onMouseEnter={(e) => {
@@ -2232,15 +2283,14 @@ function ExamRoom() {
         </button>
       </div>
 
-      {/* 抽题结果展示 - 移动端适配 */}
       {questions.length > 0 && questions.map((q, index) => (
         <div 
-          key={q.id} 
+          key={q._id} 
           style={{ 
             background: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(10px)',
             borderRadius: '20px', 
-            padding: '20px 16px', // 移动端减小内边距
+            padding: '20px 16px',
             marginBottom: '20px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
             border: '1px solid rgba(255,255,255,0.8)',
@@ -2262,7 +2312,6 @@ function ExamRoom() {
             justifyContent: 'space-between', 
             alignItems: 'flex-start',
             marginBottom: '16px',
-            // 移动端换行
             flexWrap: 'wrap',
             gap: '10px'
           }}>
@@ -2280,21 +2329,20 @@ function ExamRoom() {
                 </span>
                 <span style={{ 
                   padding: '6px 14px', 
-                  background: q.type === 'english' && !showQuestion[q.id] ? 'rgba(168, 85, 247, 0.1)' : 'rgba(0,0,0,0.04)', 
+                  background: q.type === 'english' && !showQuestion[q._id] ? 'rgba(168, 85, 247, 0.1)' : 'rgba(0,0,0,0.04)', 
                   borderRadius: '20px', 
                   fontSize: '13px',
                   fontWeight: 500,
-                  color: q.type === 'english' && !showQuestion[q.id] ? '#7c3aed' : '#6b7280'
+                  color: q.type === 'english' && !showQuestion[q._id] ? '#7c3aed' : '#6b7280'
                 }}>
-                  {q.type === 'chinese' ? '中文题' : (showQuestion[q.id] ? '英文题' : '🔇 英文盲听模式')}
+                  {q.type === 'chinese' ? '中文题' : (showQuestion[q._id] ? '英文题' : '🔇 英文盲听模式')}
                 </span>
               </div>
 
-              {/* 盲听逻辑 */}
-              {q.type === 'chinese' || showQuestion[q.id] ? (
+              {q.type === 'chinese' || showQuestion[q._id] ? (
                 <h3 style={{ 
                   margin: '0 0 16px 0', 
-                  fontSize: '16px', // 移动端缩小标题
+                  fontSize: '16px',
                   color: '#111827',
                   lineHeight: '1.6',
                   fontWeight: 600,
@@ -2305,7 +2353,7 @@ function ExamRoom() {
               ) : (
                 <div style={{
                   textAlign: 'center',
-                  padding: '20px 16px', // 移动端减小内边距
+                  padding: '20px 16px',
                   background: 'rgba(168, 85, 247, 0.05)',
                   borderRadius: '16px',
                   border: '2px dashed rgba(168, 85, 247, 0.2)',
@@ -2320,7 +2368,7 @@ function ExamRoom() {
                     🔇 题目已隐藏，请先点击右侧「朗读」按钮盲听
                   </p>
                   <button 
-                    onClick={() => setShowQuestion({...showQuestion, [q.id]: true})}
+                    onClick={() => setShowQuestion({...showQuestion, [q._id]: true})}
                     style={{
                       padding: '10px 24px',
                       background: '#7c3aed',
@@ -2331,7 +2379,7 @@ function ExamRoom() {
                       fontSize: '14px',
                       fontWeight: 500,
                       transition: 'all 0.2s ease',
-                      width: '100%' // 移动端按钮宽度100%
+                      width: '100%'
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.background = '#6d28d9';
@@ -2362,7 +2410,6 @@ function ExamRoom() {
                 alignItems: 'center',
                 gap: '8px',
                 fontSize: '14px',
-                // 移动端按钮宽度100%
                 flex: '1 1 100%',
                 justifyContent: 'center',
                 marginTop: '10px'
@@ -2382,8 +2429,7 @@ function ExamRoom() {
             </button>
           </div>
 
-          {/* 翻译显示 */}
-          {(q.type === 'chinese' || showQuestion[q.id]) && q.translation && (
+          {(q.type === 'chinese' || showQuestion[q._id]) && q.translation && (
             <p style={{ 
               color: '#6b7280', 
               marginBottom: '16px',
@@ -2398,16 +2444,15 @@ function ExamRoom() {
             </p>
           )}
 
-          {/* 查看答案/作答按钮 - 移动端适配 */}
-          {(q.type === 'chinese' || showQuestion[q.id]) && !showAnswer[q.id] && !results[q.id] && (
+          {(q.type === 'chinese' || showQuestion[q._id]) && !showAnswer[q._id] && !results[q._id] && (
             <div style={{ 
               display: 'flex', 
-              gap: '10px', // 移动端减小间距
+              gap: '10px',
               marginTop: '20px',
               flexWrap: 'wrap'
             }}>
               <button 
-                onClick={() => setShowAnswer({...showAnswer, [q.id]: true})} 
+                onClick={() => setShowAnswer({...showAnswer, [q._id]: true})} 
                 style={{ 
                   padding: '12px 20px', 
                   border: '1px solid rgba(0,0,0,0.08)', 
@@ -2421,7 +2466,7 @@ function ExamRoom() {
                   alignItems: 'center',
                   gap: '8px',
                   fontSize: '14px',
-                  flex: '1 1 calc(50% - 5px)' // 移动端每行两个
+                  flex: '1 1 calc(50% - 5px)'
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.borderColor = 'rgba(0,0,0,0.15)';
@@ -2437,7 +2482,7 @@ function ExamRoom() {
                 📖 查看答案
               </button>
               <button 
-                onClick={() => setShowAnswer({...showAnswer, [q.id]: '作答'})} 
+                onClick={() => setShowAnswer({...showAnswer, [q._id]: '作答'})} 
                 style={{ 
                   padding: '12px 20px', 
                   border: 'none', 
@@ -2451,7 +2496,7 @@ function ExamRoom() {
                   alignItems: 'center',
                   gap: '8px',
                   fontSize: '14px',
-                  flex: '1 1 calc(50% - 5px)' // 移动端每行两个
+                  flex: '1 1 calc(50% - 5px)'
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.background = '#000';
@@ -2467,11 +2512,10 @@ function ExamRoom() {
             </div>
           )}
 
-          {/* 查看答案区域 - 移动端适配 */}
-          {(q.type === 'chinese' || showQuestion[q.id]) && showAnswer[q.id] === true && (
+          {(q.type === 'chinese' || showQuestion[q._id]) && showAnswer[q._id] === true && (
             <div style={{ 
               marginTop: '20px', 
-              padding: '20px 16px', // 移动端减小内边距
+              padding: '20px 16px',
               background: 'rgba(59, 130, 246, 0.05)', 
               borderRadius: '16px',
               border: '1px solid rgba(59, 130, 246, 0.1)',
@@ -2528,7 +2572,7 @@ function ExamRoom() {
               </p>
               {q.answer_translation && (
                 <div style={{
-                  padding: '16px 14px', // 移动端减小内边距
+                  padding: '16px 14px',
                   background: 'white',
                   borderRadius: '12px',
                   borderLeft: '3px solid #3b82f6',
@@ -2554,7 +2598,7 @@ function ExamRoom() {
                 </div>
               )}
               <button 
-                onClick={() => setShowAnswer({...showAnswer, [q.id]: '作答'})} 
+                onClick={() => setShowAnswer({...showAnswer, [q._id]: '作答'})} 
                 style={{ 
                   marginTop: '20px', 
                   padding: '12px 24px', 
@@ -2569,7 +2613,7 @@ function ExamRoom() {
                   alignItems: 'center',
                   gap: '8px',
                   fontSize: '14px',
-                  width: '100%', // 移动端按钮宽度100%
+                  width: '100%',
                   justifyContent: 'center'
                 }}
                 onMouseEnter={(e) => {
@@ -2586,8 +2630,7 @@ function ExamRoom() {
             </div>
           )}
 
-          {/* 作答区域 - 移动端适配 */}
-          {(q.type === 'chinese' || showQuestion[q.id]) && showAnswer[q.id] === '作答' && !results[q.id] && (
+          {(q.type === 'chinese' || showQuestion[q._id]) && showAnswer[q._id] === '作答' && !results[q._id] && (
             <div style={{ 
               marginTop: '20px',
               animation: 'fadeIn 0.3s ease'
@@ -2608,8 +2651,8 @@ function ExamRoom() {
                   outline: 'none',
                   boxSizing: 'border-box'
                 }} 
-                value={answers[q.id] || ''} 
-                onChange={e => setAnswers({...answers, [q.id]: e.target.value})} 
+                value={answers[q._id] || ''} 
+                onChange={e => setAnswers({...answers, [q._id]: e.target.value})} 
                 placeholder="请在此输入你的答案，充分展示你的专业知识和教学能力..."
                 onFocus={(e) => {
                   e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
@@ -2638,7 +2681,7 @@ function ExamRoom() {
                   alignItems: 'center',
                   gap: '10px',
                   opacity: loading ? 0.6 : 1,
-                  width: '100%', // 移动端按钮宽度100%
+                  width: '100%',
                   justifyContent: 'center'
                 }}
                 onMouseEnter={(e) => {
@@ -2659,11 +2702,10 @@ function ExamRoom() {
             </div>
           )}
 
-          {/* 评分结果 - 移动端适配 */}
-          {(q.type === 'chinese' || showQuestion[q.id]) && results[q.id] && (
+          {(q.type === 'chinese' || showQuestion[q._id]) && results[q._id] && (
             <div style={{ 
               marginTop: '20px', 
-              padding: '20px 16px', // 移动端减小内边距
+              padding: '20px 16px',
               background: 'rgba(16, 185, 129, 0.08)', 
               borderRadius: '16px', 
               border: '1px solid rgba(16, 185, 129, 0.2)',
@@ -2687,7 +2729,7 @@ function ExamRoom() {
                 </h4>
               </div>
               <div style={{
-                padding: '20px 16px', // 移动端减小内边距
+                padding: '20px 16px',
                 background: 'white',
                 borderRadius: '12px',
                 border: '1px solid rgba(16, 185, 129, 0.15)',
@@ -2696,7 +2738,7 @@ function ExamRoom() {
                 whiteSpace: 'pre-wrap',
                 fontSize: '15px'
               }}>
-                {results[q.id]}
+                {results[q._id]}
               </div>
             </div>
           )}
@@ -2745,8 +2787,12 @@ export default function App() {
             transform: translateY(0);
           }
         }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
         
-        /* 移动端样式适配 */
         @media (max-width: 768px) {
           * {
             box-sizing: border-box;
@@ -2757,18 +2803,15 @@ export default function App() {
             line-height: 1.5;
           }
           
-          /* 修复移动端滚动问题 */
           html, body {
             overflow-x: hidden;
             width: 100%;
           }
           
-          /* 按钮和输入框适配 */
           button, input, select, textarea {
             font-size: 14px !important;
           }
           
-          /* 修复移动端点击高亮 */
           * {
             -webkit-tap-highlight-color: transparent;
           }
