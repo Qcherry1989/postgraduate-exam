@@ -19,11 +19,18 @@ const globalStyles = {
   }
 };
 
-// 导航组件 - 移动端适配重构
+// 导航组件 - 移动端标题简写
 function Nav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <nav style={{
@@ -47,8 +54,9 @@ function Nav() {
         alignItems: 'center',
         height: '64px'
       }}>
+        {/* 标题区域：移动端简写，桌面端完整 */}
         <div style={{ 
-          fontSize: '18px', 
+          fontSize: isMobile ? '15px' : '18px', 
           fontWeight: 600, 
           color: '#111827',
           display: 'flex',
@@ -57,12 +65,9 @@ function Nav() {
           letterSpacing: '-0.3px'
         }}>
           <span style={{ fontSize: '22px' }}>🎓</span>
-          <span style={{ 
-            fontSize: '16px',
-            '@media (min-width: 768px)': {
-              fontSize: '18px'
-            }
-          }}>国际中文教育复试系统</span>
+          <span>
+            {isMobile ? '复试系统' : '国际中文教育复试系统'}
+          </span>
         </div>
         
         {/* 桌面端导航按钮 */}
@@ -281,7 +286,7 @@ function QuestionManager() {
   const [answerMode, setAnswerMode] = useState('ai');
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
-  const [loadingQuestions, setLoadingQuestions] = useState(true);  // 加载题目时的动画状态
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [showList, setShowList] = useState(true);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -292,21 +297,17 @@ function QuestionManager() {
 
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1);
-  const [questionsPerPage] = useState(10);   // 每页显示10题
+  const [questionsPerPage] = useState(10);
 
-  // 加载题目（支持缓存）
   const loadQuestions = async (forceRefresh = false) => {
     setLoadingQuestions(true);
     try {
-      // 如果有缓存且不是强制刷新，先显示缓存（但这里不强制缓存，直接请求，但为了冷启动优化，可以保留）
-      // 直接请求后端
       const params = new URLSearchParams();
       if (keyword) params.append('keyword', keyword);
       if (sortOrder) params.append('sort', sortOrder);
       const res = await fetch(`https://postgraduate-exam.onrender.com/api/questions?${params.toString()}`);
       const data = await res.json();
       setQuestions(data);
-      // 重置到第一页
       setCurrentPage(1);
     } catch (err) {
       console.error('加载失败:', err);
@@ -326,7 +327,6 @@ function QuestionManager() {
   const currentQuestions = questions.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(questions.length / questionsPerPage);
 
-  // 翻页函数
   const goToPrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
@@ -359,7 +359,7 @@ function QuestionManager() {
       });
       alert('✅ 题目添加成功！');
       setForm({ type: form.type, content: '', standard_answer: '', translation: '', answer_translation: '' });
-      loadQuestions(true); // 强制刷新
+      loadQuestions(true);
     } catch (err) {
       alert('❌ 添加失败');
     }
