@@ -1996,7 +1996,7 @@ function SpeechSettings() {
   );
 }
 
-// 模拟复试组件 - 增加“仅从勾选题目中抽取”选项
+// 模拟复试组件 - 增加“仅从勾选题目中抽取”选项 + 状态持久化
 function ExamRoom() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -2007,6 +2007,38 @@ function ExamRoom() {
   const [englishCount, setEnglishCount] = useState(1);
   const [showQuestion, setShowQuestion] = useState({});
   const [useSelected, setUseSelected] = useState(false);
+
+  // 缓存 key
+  const STORAGE_KEY = 'examRoomState';
+
+  // 组件加载时从 localStorage 恢复状态
+  useEffect(() => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      try {
+        const { questions, answers, results, showAnswer, showQuestion } = JSON.parse(savedState);
+        setQuestions(questions || []);
+        setAnswers(answers || {});
+        setResults(results || {});
+        setShowAnswer(showAnswer || {});
+        setShowQuestion(showQuestion || {});
+      } catch (e) {
+        console.error('恢复缓存失败', e);
+      }
+    }
+  }, []);
+
+  // 每次状态变化时自动保存到 localStorage
+  useEffect(() => {
+    const stateToSave = {
+      questions,
+      answers,
+      results,
+      showAnswer,
+      showQuestion,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+  }, [questions, answers, results, showAnswer, showQuestion]);
 
   const speak = (text, lang = 'zh-CN') => {
     try {
@@ -2096,11 +2128,14 @@ function ExamRoom() {
       const randomChinese = randomSelect(chineseQuestions, chineseCount);
       const randomEnglish = randomSelect(englishQuestions, englishCount);
       const finalQuestions = [...randomChinese, ...randomEnglish];
+      
+      // 清空旧的答案、评分等，设置新抽到的题目
       setQuestions(finalQuestions);
       setAnswers({});
       setResults({});
       setShowAnswer({});
       setShowQuestion({});
+      // 注意：localStorage 会自动保存新状态（通过 useEffect）
     } catch (err) {
       alert('❌ 抽题失败');
       console.error(err);
